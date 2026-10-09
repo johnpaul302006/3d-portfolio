@@ -5,31 +5,39 @@ const { DatabaseSync } = require('node:sqlite');
 try { process.loadEnvFile(path.join(__dirname, '.env')); } catch {}
 const PORT = +process.env.PORT || 3000, PROD = process.env.NODE_ENV === 'production', PROXY = process.env.TRUST_PROXY === '1';
 const HOST = (process.env.OWNER_EMAIL || '').trim().toLowerCase();
+const HOST_PW = String(process.env.OWNER_PASSWORD || '');
 const DIR = path.join(process.env.DATA_DIR || path.join(__dirname, 'data')), UP = path.join(DIR, 'uploads');
 fs.mkdirSync(UP, { recursive: true });
 const db = new DatabaseSync(path.join(DIR, 'app.db'));
 db.exec(`create table if not exists users(id integer primary key, email text unique not null, pw text not null, role text not null default 'visitor');
-create table if not exists sessions(h text primary key, uid integer not null, exp integer not null);
 create table if not exists items(id integer primary key, kind text not null, data text not null);`);
+
+const sessionCols = db.prepare("pragma table_info(sessions)").all().map(c => c.name);
+if (sessionCols.length === 0) {
+  db.exec(`create table sessions(h text primary key, email text not null, role text not null, exp integer not null);`);
+} else if (!sessionCols.includes('role') || !sessionCols.includes('email')) {
+  db.exec(`drop table if exists sessions;
+create table sessions(h text primary key, email text not null, role text not null, exp integer not null);`);
+}
+db.prepare('delete from sessions where exp <= ?').run(Date.now());
 
 const hash = p => { const s = crypto.randomBytes(16); return s.toString('hex') + ':' + crypto.scryptSync(p, s, 64).toString('hex'); };
 const check = (p, st) => { const [s, h] = st.split(':'); return crypto.timingSafeEqual(crypto.scryptSync(p, Buffer.from(s, 'hex'), 64), Buffer.from(h, 'hex')); };
-const DUMMY = hash('x');
-if (HOST && process.env.OWNER_PASSWORD) { // the only way to become host: server-side env config
-  db.prepare(`insert into users(email,pw,role) values(?,?,'host') on conflict(email) do update set pw=excluded.pw, role='host'`).run(HOST, hash(process.env.OWNER_PASSWORD));
+if (HOST && HOST_PW) { // the only way to become host: server-side env config
+  db.prepare(`insert into users(email,pw,role) values(?,?,'host') on conflict(email) do update set pw=excluded.pw, role='host'`).run(HOST, hash(HOST_PW));
   db.prepare(`update users set role='visitor' where role='host' and email<>?`).run(HOST);
-} else if (!db.prepare(`select 1 from users where role='host'`).get()) console.warn('No host account yet: set OWNER_EMAIL and OWNER_PASSWORD in .env');
+} else if (!db.prepare(`select 1 from users where role='host'`).get()) console.warn('No host account yet: set OWNER_EMAIL and OWNER_PASSWORD in .env or environment');
 if (!db.prepare('select 1 from items').get() && fs.existsSync(path.join(__dirname, 'seed.json'))) {
   const sd = JSON.parse(fs.readFileSync(path.join(__dirname, 'seed.json')));
   for (const k of ['projects', 'certs']) for (const o of sd[k]) db.prepare('insert into items(kind,data) values(?,?)').run(k, JSON.stringify(o));
 }
 
 const sha = t => crypto.createHash('sha256').update(t).digest('hex');
-const mkSession = uid => { const t = crypto.randomBytes(32).toString('hex'); db.prepare('insert into sessions values(?,?,?)').run(sha(t), uid, Date.now() + 7 * 864e5); return t; };
+const mkSession = (email, role) => { const t = crypto.randomBytes(32).toString('hex'); db.prepare('insert into sessions values(?,?,?,?)').run(sha(t), email, role, Date.now() + 7 * 864e5); return t; };
 const cookie = (v, age) => `sid=${v}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${age}${PROD ? '; Secure' : ''}`;
 function who(req) {
   const m = /(?:^|; )sid=([a-f0-9]{64})/.exec(req.headers.cookie || ''); if (!m) return null;
-  const h = sha(m[1]), r = db.prepare('select u.id,u.email,u.role,s.exp from sessions s join users u on u.id=s.uid where s.h=?').get(h);
+  const h = sha(m[1]), r = db.prepare('select email,role,exp from sessions where h=?').get(h);
   return r && r.exp > Date.now() ? { ...r, h } : null;
 }
 const tries = new Map();
@@ -74,20 +82,31 @@ http.createServer(async (req, res) => {
     const ip = (PROXY && String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()) || req.socket.remoteAddress;
     if (M !== 'GET' && req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) return send(res, 403, { error: 'Forbidden.' });
     if (M === 'GET' && p === '/') return send(res, 200, page(s ? 'private/index.html' : 'public/login.html'));
-    if (M === 'POST' && p === '/api/login') {
+    if (M === 'POST' && (p === '/api/login' || p === '/api/signup')) {
       if (over(ip)) return send(res, 429, { error: 'Too many attempts. Please try again in a few minutes.' });
-      const b = await body(req), r = db.prepare('select * from users where email=?').get(String(b.email || '').trim().toLowerCase());
-      if (!(check(String(b.password || ''), r ? r.pw : DUMMY) && r)) return send(res, 401, { error: 'Invalid email or password.' });
-      return send(res, 200, { role: r.role }, { 'Set-Cookie': cookie(mkSession(r.id), 604800) });
-    }
-    if (M === 'POST' && p === '/api/signup') { // always creates a plain visitor; host email is reserved
-      if (over(ip)) return send(res, 429, { error: 'Too many attempts. Please try again in a few minutes.' });
-      const b = await body(req), e = String(b.email || '').trim().toLowerCase(), pw = String(b.password || '');
-      if (!/^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$/.test(e) || e.length > 120) return send(res, 400, { error: 'Enter a valid email address.' });
-      if (pw.length < 8 || pw.length > 128) return send(res, 400, { error: 'Password must be 8 to 128 characters.' });
-      if (e === HOST || db.prepare('select 1 from users where email=?').get(e)) return send(res, 409, { error: 'This email cannot be registered. Try logging in.' });
-      const id = db.prepare(`insert into users(email,pw,role) values(?,?,'visitor')`).run(e, hash(pw)).lastInsertRowid;
-      return send(res, 200, { role: 'visitor' }, { 'Set-Cookie': cookie(mkSession(Number(id)), 604800) });
+      const b = await body(req);
+      const email = String(b.email || '').trim().toLowerCase();
+      const password = String(b.password || '');
+      if (!email || !/^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$/.test(email) || email.length > 120) {
+        return send(res, 400, { error: 'Enter a valid email address.' });
+      }
+      if (!password || !password.trim()) {
+        return send(res, 400, { error: 'Enter your password.' });
+      }
+
+      // Only grant host if both email AND password match exact configured host credentials
+      const isHost = Boolean(
+        HOST && HOST_PW &&
+        email === HOST &&
+        crypto.timingSafeEqual(
+          crypto.createHash('sha256').update(password).digest(),
+          crypto.createHash('sha256').update(HOST_PW).digest()
+        )
+      );
+
+      const role = isHost ? 'host' : 'visitor';
+      const token = mkSession(email, role);
+      return send(res, 200, { role }, { 'Set-Cookie': cookie(token, 604800) });
     }
     if (M === 'POST' && p === '/api/logout') { if (s) db.prepare('delete from sessions where h=?').run(s.h); return send(res, 200, { ok: 1 }, { 'Set-Cookie': cookie('', 0) }); }
     if (!s) return send(res, 401, { error: 'Sign in required.' });

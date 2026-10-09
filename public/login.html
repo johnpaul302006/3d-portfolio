@@ -49,25 +49,22 @@ input{padding:8px 0}
 <main>
 <span class="mono" id="kick">Sign in to continue</span>
 <h1 id="ttl">WELCOME <em>BACK</em></h1>
-<p class="s" id="sub">Sign in with your email and password to view the portfolio.</p>
+<p class="s" id="sub">Enter your email and password to view the portfolio.</p>
 <form id="f" novalidate>
 <label class="mono">Email<input id="e" type="email" autocomplete="username" placeholder="you@gmail.com" required></label>
 <label class="mono">Password<span class="f"><input id="p" type="password" autocomplete="current-password" placeholder="Enter password" required><button type="button" id="eye" aria-label="Show password" aria-pressed="false">Show</button></span></label>
 <div id="err" role="alert"></div>
 <button class="go" id="go">Login</button>
 </form>
-<p class="sw"><span id="q">New here?</span><button type="button" id="sw">Create an account</button></p>
+<p class="sw"><span id="q">Visitor access:</span> Enter any email and password</p>
 </main>
 <script>
-const $=s=>document.querySelector(s);let signup=false;
+const $=s=>document.querySelector(s);
 $("#eye").onclick=()=>{const h=$("#p").type==="password";$("#p").type=h?"text":"password";$("#eye").textContent=h?"Hide":"Show";$("#eye").setAttribute("aria-pressed",h);$("#eye").setAttribute("aria-label",h?"Hide password":"Show password")};
-$("#sw").onclick=()=>{signup=!signup;$("#err").textContent="";$("#kick").textContent=signup?"Create a visitor account":"Sign in to continue";$("#ttl").innerHTML=signup?"CREATE <em>ACCOUNT</em>":"WELCOME <em>BACK</em>";
-$("#sub").textContent=signup?"Choose an email and a password of at least 8 characters.":"Sign in with your email and password to view the portfolio.";$("#go").textContent=signup?"Create account":"Login";
-$("#q").textContent=signup?"Already registered?":"New here?";$("#sw").textContent=signup?"Login":"Create an account";$("#p").autocomplete=signup?"new-password":"current-password"};
 $("#f").onsubmit=async e=>{e.preventDefault();const b=$("#go"),er=$("#err"),em=$("#e").value.trim(),pw=$("#p").value;er.textContent="";
-if(!/^\S+@\S+\.\S+$/.test(em))return er.textContent="Enter a valid email address.";if(!pw)return er.textContent="Enter your password.";
-if(b.disabled)return;b.disabled=true;const t=b.textContent;b.textContent=signup?"Creating…":"Signing in…";
-try{const r=await fetch(signup?"/api/signup":"/api/login",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({email:em,password:pw})});
+if(!em||!/^\S+@\S+\.\S+$/.test(em))return er.textContent="Enter a valid email address.";if(!pw||!pw.trim())return er.textContent="Enter your password.";
+if(b.disabled)return;b.disabled=true;const t=b.textContent;b.textContent="Signing in…";
+try{const r=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({email:em,password:pw})});
 const j=await r.json().catch(()=>({}));if(r.ok){location.replace("/");return}er.textContent=j.error||"Something went wrong."}catch(_){er.textContent="Can't reach the server. Check your connection."}
 b.disabled=false;b.textContent=t};
 addEventListener("pageshow",e=>{if(e.persisted)location.reload()});

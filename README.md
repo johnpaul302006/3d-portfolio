@@ -1,32 +1,80 @@
-# S John Paul — Portfolio with login, host controls and live updates
+# S John Paul — 3D Portfolio with Visitor Access & Host-Only Controls
 
-Needs **Node 22.13+**. No npm packages to install.
+An interactive 3D developer portfolio built with Node.js, SQLite, server-side sessions, and live SSE updates. Zero external npm dependencies.
 
-## Run locally
+Requirements: **Node 22.13+** (uses native `node:sqlite`).
+
+---
+
+## Quick Start
+
+```bash
+# 1. Create your local environment configuration
+cp .env.example .env
+
+# 2. Configure your environment variables in .env
+# OWNER_EMAIL=your_email@example.com
+# OWNER_PASSWORD=your_secure_host_password_here
+
+# 3. Start the application
+npm start
+# Visit http://localhost:3000
 ```
-cp .env.example .env      # then edit .env: set OWNER_PASSWORD
-npm start                 # http://localhost:3000
+
+To run the automated test suite:
+```bash
+npm test
 ```
 
-## Host account
-`OWNER_EMAIL` + `OWNER_PASSWORD` in `.env` (or your host's environment variables) create the single host account on start-up.
-The password is stored only as a salted scrypt hash in `data/app.db`. It is never in the page, the repo or any API response.
-To change it: edit `OWNER_PASSWORD` and restart. Anyone else who registers is a plain *visitor*.
+---
 
-## How it is enforced
-- `/` serves the login page unless the request has a valid server-side session; the portfolio HTML is never sent to signed-out users.
-- Sessions: random 256-bit token in an HttpOnly, SameSite=Strict cookie (Secure in production); only its hash is stored. Logout deletes it.
-- All content writes (`/api/projects`, `/api/certs`) check the host role on the server; visitors get 403, anonymous users 401.
-- Uploads: PNG/JPG/GIF/WebP (and PDF for certificates), max 3 MB, type decided from the file bytes, random file names, served only to signed-in users.
-- Login/sign-up are rate-limited (10 attempts / 10 min / IP). Set `TRUST_PROXY=1` behind a proxy so the real IP is used.
-- Changes are pushed to every open session with server-sent events.
+## Authentication & Access Control
 
-## Deploy
-Needs a Node host with a **persistent disk** (Render, Railway, Fly.io, a VPS). Static hosts (GitHub Pages, Netlify static) cannot run this.
-Set `OWNER_EMAIL`, `OWNER_PASSWORD`, `NODE_ENV=production`, `TRUST_PROXY=1`, and `DATA_DIR` to the persistent disk path. Serve over HTTPS.
+### 1. Instant Visitor Access
+- When visitors open the portfolio, the login screen is displayed.
+- Visitors can enter **any valid email address and any password**.
+- No pre-registration, email verification, or stored database credentials are required.
+- The server validates the non-empty fields and grants a valid server-side `visitor` session.
+- **Visitor permissions**:
+  - View all portfolio sections, 3D turntable, projects, skills, journey, certifications, and contact details.
+  - Open project links and social media channels.
+  - Log out back to the login screen.
+  - **All administrative controls (Add/Remove/Edit projects and certificates) are completely hidden from visitors**.
+  - Direct API write requests from visitors return `403 Forbidden`.
 
-## Not included
-Email verification and "forgot password" (need an email service). Anyone can create a visitor account with any email address.
+### 2. Host-Only Administrative Access
+- The single portfolio host is identified strictly by matching the configured server-side environment variables:
+  - `OWNER_EMAIL`
+  - `OWNER_PASSWORD`
+- **Strict Verification Rule**: Only when **both** the email and password match the configured host credentials exactly does the session receive the `host` role.
+- If someone enters the host email with an incorrect password, they enter as a standard visitor with **zero** administrative privileges.
+- **Host permissions**:
+  - Add new projects and courses.
+  - Remove or edit existing projects.
+  - Add certificates (via file upload or URL) and remove certificates.
+  - Changes are permanently saved to SQLite and broadcast in real time to all active sessions via Server-Sent Events (SSE).
 
-## Edit content
-Social links: `CFG` in `private/index.html`. First-run content: `seed.json` (only used while the database is empty).
+### 3. Server-Side Security & Role Enforcement
+- Sessions use random 256-bit cryptographically secure tokens stored in `HttpOnly`, `SameSite=Strict` cookies (`Secure` in production).
+- Only the SHA-256 hash of the token is stored in SQLite alongside the server-determined role (`host` or `visitor`).
+- `/api/me` returns the verified session role.
+- Every content write (`/api/projects`, `/api/certs`) validates `s.role === 'host'`. Visitors receive `403 Forbidden`; unauthenticated requests receive `401 Unauthorized`.
+- Arbitrary visitor passwords are **never stored** in the database.
+- Login attempts are rate-limited (10 attempts / 10 min / IP).
+
+---
+
+## Cloud Deployment (Render, Railway, Fly.io, VPS)
+
+Deploy the repository to any Node 22+ hosting platform:
+
+1. Connect your GitHub repository: `https://github.com/johnpaul302006/3d-portfolio`.
+2. Configure **Environment Variables** in the hosting dashboard:
+   - `OWNER_EMAIL`: Your host email (e.g. `sjohnpaul638@gmail.com`)
+   - `OWNER_PASSWORD`: Your secure host password (e.g. `Admin1234!`)
+   - `NODE_VERSION`: `22` (or >= 22.13)
+   - `NODE_ENV`: `production`
+   - `TRUST_PROXY`: `1` (when running behind Render/Railway/nginx reverse proxy)
+   - `DATA_DIR`: Path to a persistent disk (e.g. `/var/data` if using persistent volume)
+3. Build Command: *(leave empty or `npm install`)*
+4. Start Command: `node server.js`
