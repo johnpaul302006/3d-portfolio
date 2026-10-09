@@ -1,0 +1,47 @@
+{
+ "projects": [
+  {
+   "title": "AEGIS — AI Cybersecurity Platform",
+   "cat": "AI / Cybersecurity / Full-Stack",
+   "full": "An enterprise-oriented AI cybersecurity platform focused on secure password generation, authentication, encrypted vault architecture and modern client-side cryptographic workflows.",
+   "tech": "React · Python · FastAPI · Cryptography · JWT · Argon2id · AES-GCM · PBKDF2 · Redis · Docker",
+   "status": "Completed"
+  },
+  {
+   "title": "Zepto Data AI Platform",
+   "cat": "Data Engineering / Data Analytics / AI",
+   "full": "A data-focused project involving data collection, cleaning, validation, database storage and analytical workflows, designed as a practical foundation for intelligent data applications.",
+   "tech": "Python · Pandas · SQL · SQLite · Data validation · Data pipelines",
+   "status": "Completed"
+  },
+  {
+   "title": "AI Surveillance & Incident Detection System",
+   "cat": "Computer Vision / AI",
+   "full": "An AI-powered surveillance and incident detection concept using computer vision to identify potentially important events in real time.",
+   "tech": "Python · OpenCV · Computer Vision · AI/ML",
+   "status": "Completed"
+  },
+  {
+   "title": "AI-Powered E-Commerce Web Application",
+   "cat": "Web Development / AI / Product",
+   "full": "A modern e-commerce experience inspired by large-scale fashion and shopping platforms, built with modern web technologies and AI-assisted development workflows.",
+   "tech": "Product discovery · Product UI · Wishlist · Account experience · Responsive design",
+   "status": "Completed"
+  },
+  {
+   "title": "Argentic AI",
+   "cat": "Generative AI / AI Agents",
+   "full": "An ongoing exploration and development project focused on intelligent AI-driven workflows and agentic AI concepts.",
+   "tech": "Currently exploring",
+   "status": "In progress"
+  }
+ ],
+ "certs": [
+  {
+   "name": "Vishleshan — AI/ML Course",
+   "org": "IHub IIT Patna",
+   "date": "September 2026",
+   "desc": "AI/ML course completed; certificate obtained September 30, 2026."
+  }
+ ]
+}

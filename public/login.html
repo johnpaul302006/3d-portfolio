@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="dark">
+<title>S John Paul — Sign in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0707;--ink:#f3ece8;--mute:#b9a9a4;--line:rgba(243,236,232,.18);--red:#d8423b;--serif:'Instrument Serif',Georgia,serif;--sans:'Inter Tight',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,monospace;color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box;margin:0}
+body{min-height:100vh;min-height:100svh;background:radial-gradient(ellipse 70% 80% at 50% 45%,#b63330 0,#7a1a19 45%,#1d0a0a 100%);color:var(--ink);font:300 clamp(15px,2vw,17px)/1.6 var(--sans);display:grid;place-items:center;padding:calc(max(60px,8vh) + env(safe-area-inset-top,0px)) clamp(14px,4vw,24px) calc(24px + env(safe-area-inset-bottom,0px));-webkit-font-smoothing:antialiased;overflow-y:auto;overflow-x:hidden}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 50%,transparent 55%,rgba(0,0,0,.55))}
+.logo{position:fixed;top:calc(16px + env(safe-area-inset-top,0px));left:clamp(16px,4vw,56px);font:400 clamp(22px,3vw,26px) var(--serif);letter-spacing:.06em;z-index:10}
+.mono{font:400 11px/1.4 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+main{position:relative;z-index:1;width:min(480px,100%);margin:auto;padding:clamp(22px,5.5vw,44px);border:1px solid var(--line);background:rgba(11,7,7,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);animation:in .9s cubic-bezier(.2,.7,.2,1) both;border-radius:4px}
+@keyframes in{from{opacity:0;transform:translateY(24px)}}
+h1{font:400 clamp(38px,8.5vw,72px)/.95 var(--serif);letter-spacing:-.02em;margin:12px 0 8px}h1 em{color:var(--red)}
+p.s{color:#e0d3ce;margin-bottom:clamp(18px,4vw,26px);font-size:clamp(14px,2vw,16px)}
+form{display:grid;gap:clamp(16px,3.5vw,20px)}
+label{display:grid;gap:4px}
+.f{position:relative}
+input{width:100%;background:none;border:0;border-bottom:1px solid var(--line);color:var(--ink);font:300 16px var(--sans);padding:12px 0;outline:0;border-radius:0;transition:border-color .3s}
+input:focus{border-color:var(--red)}
+#eye{position:absolute;right:0;bottom:0;background:none;border:0;color:var(--mute);font:400 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;cursor:pointer;padding:8px 6px;min-height:44px;min-width:44px;display:inline-grid;place-items:center}
+#eye:hover,#eye:focus-visible{color:var(--ink)}
+.go{background:var(--red);border:0;color:#fff;padding:16px 34px;min-height:48px;border-radius:99px;font:400 clamp(15px,2vw,16px) var(--sans);cursor:pointer;transition:background .3s,transform .3s;width:100%;touch-action:manipulation}
+.go:hover{background:#ef5249}.go:disabled{opacity:.6;cursor:wait}
+#err{min-height:20px;color:#ffb3ae;font-size:14px}
+.sw{margin-top:clamp(16px,3vw,22px);text-align:center;color:var(--mute);font-size:clamp(13px,1.8vw,14px)}.sw button{background:none;border:0;border-bottom:1px solid var(--red);color:var(--ink);font:inherit;cursor:pointer;padding:2px 0;margin-left:6px;min-height:36px}
+:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+@media(max-height:540px){
+body{padding:calc(46px + env(safe-area-inset-top,0px)) 16px 20px}
+.logo{top:calc(10px + env(safe-area-inset-top,0px));font-size:20px}
+h1{font-size:clamp(28px,7vw,42px);margin:4px 0}
+p.s{margin-bottom:12px;font-size:13px}
+form{gap:12px}
+input{padding:8px 0}
+.go{padding:12px 24px;min-height:44px}
+.sw{margin-top:12px}
+}
+@media(prefers-reduced-motion:reduce){main{animation:none}}
+</style>
+</head>
+<body>
+<a class="logo" href="/" aria-label="S John Paul">SJP</a>
+<main>
+<span class="mono" id="kick">Sign in to continue</span>
+<h1 id="ttl">WELCOME <em>BACK</em></h1>
+<p class="s" id="sub">Sign in with your email and password to view the portfolio.</p>
+<form id="f" novalidate>
+<label class="mono">Email<input id="e" type="email" autocomplete="username" placeholder="you@gmail.com" required></label>
+<label class="mono">Password<span class="f"><input id="p" type="password" autocomplete="current-password" placeholder="Enter password" required><button type="button" id="eye" aria-label="Show password" aria-pressed="false">Show</button></span></label>
+<div id="err" role="alert"></div>
+<button class="go" id="go">Login</button>
+</form>
+<p class="sw"><span id="q">New here?</span><button type="button" id="sw">Create an account</button></p>
+</main>
+<script>
+const $=s=>document.querySelector(s);let signup=false;
+$("#eye").onclick=()=>{const h=$("#p").type==="password";$("#p").type=h?"text":"password";$("#eye").textContent=h?"Hide":"Show";$("#eye").setAttribute("aria-pressed",h);$("#eye").setAttribute("aria-label",h?"Hide password":"Show password")};
+$("#sw").onclick=()=>{signup=!signup;$("#err").textContent="";$("#kick").textContent=signup?"Create a visitor account":"Sign in to continue";$("#ttl").innerHTML=signup?"CREATE <em>ACCOUNT</em>":"WELCOME <em>BACK</em>";
+$("#sub").textContent=signup?"Choose an email and a password of at least 8 characters.":"Sign in with your email and password to view the portfolio.";$("#go").textContent=signup?"Create account":"Login";
+$("#q").textContent=signup?"Already registered?":"New here?";$("#sw").textContent=signup?"Login":"Create an account";$("#p").autocomplete=signup?"new-password":"current-password"};
+$("#f").onsubmit=async e=>{e.preventDefault();const b=$("#go"),er=$("#err"),em=$("#e").value.trim(),pw=$("#p").value;er.textContent="";
+if(!/^\S+@\S+\.\S+$/.test(em))return er.textContent="Enter a valid email address.";if(!pw)return er.textContent="Enter your password.";
+if(b.disabled)return;b.disabled=true;const t=b.textContent;b.textContent=signup?"Creating…":"Signing in…";
+try{const r=await fetch(signup?"/api/signup":"/api/login",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify({email:em,password:pw})});
+const j=await r.json().catch(()=>({}));if(r.ok){location.replace("/");return}er.textContent=j.error||"Something went wrong."}catch(_){er.textContent="Can't reach the server. Check your connection."}
+b.disabled=false;b.textContent=t};
+addEventListener("pageshow",e=>{if(e.persisted)location.reload()});
+</script>
+</body>
+</html>
